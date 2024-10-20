@@ -1,0 +1,4 @@
+blescan
+pygame
+paho-mqtt
+requests
