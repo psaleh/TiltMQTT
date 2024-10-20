@@ -1,4 +1,4 @@
-import bluepy.btle as btle
+import bluepy3 as bluepy
 import sys
 import json
 import paho.mqtt.client as mqtt
@@ -13,9 +13,9 @@ blue   = 'a495bb60c5b14b44b5121370f02d74de'
 yellow = 'a495bb70c5b14b44b5121370f02d74de'
 pink   = 'a495bb80c5b14b44b5121370f02d74de'
 
-class ScanDelegate(btle.DefaultDelegate):
+class ScanDelegate(bluepy.DefaultDelegate):
     def __init__(self):
-        btle.DefaultDelegate.__init__(self)
+        bluepy.DefaultDelegate.__init__(self)
         
     def handleDiscovery(self, dev, isNewDev, isNewData):
         if dev.scanData:
@@ -48,7 +48,7 @@ def main():
     client.connect("mqtt.example.com", 1883, 60)  # Replace with your MQTT broker address and port
     client.loop_start()
 
-    scanner = btle.Scanner().withDelegate(ScanDelegate())
+    scanner = bluepy.Scanner().withDelegate(ScanDelegate())
     scanner.scan(10.0)  # Scans for 10 seconds
 
     client.loop_stop()
