@@ -17,4 +17,4 @@ EXPOSE 1883
 ENV NAME World
 
 # Run the application
-CMD ["python", "your_script.py"]
+CMD ["python", "app.py"]
