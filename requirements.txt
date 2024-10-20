@@ -1,4 +1,4 @@
-blescan
-pygame
+bluepy
 paho-mqtt
 requests
+
