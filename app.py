@@ -1,57 +1,82 @@
-from bluepy3 import btle
 import sys
-import json
+import datetime
+import time
 import paho.mqtt.client as mqtt
+import bluetooth._bluetooth as bluez
+import json
+import blescan
 
-# Assign uuid's of various colour tilt hydrometers
-red    = 'a495bb10c5b14b44b5121370f02d74de'
-green  = 'a495bb20c5b14b44b5121370f02d74de'
-black  = 'a495bb30c5b14b44b5121370f02d74de'
-purple = 'a495bb40c5b14b44b5121370f02d74de'
-orange = 'a495bb50c5b14b44b5121370f02d74de'
-blue   = 'a495bb60c5b14b44b5121370f02d74de'
-yellow = 'a495bb70c5b14b44b5121370f02d74de'
-pink   = 'a495bb80c5b14b44b5121370f02d74de'
+# MQTT broker details
+broker = "192.168.0.14"
+port = 1883
+topic = "tilttest/data"
+username = "hass"
+password = "JtxoZ5fBJ6a5B%"
 
-class ScanDelegate(btle.DefaultDelegate):
-    def __init__(self):
-        super().__init__()
+# UUIDs for various Tilt hydrometers
+TILTS = {
+    'a495bb10c5b14b44b5121370f02d74de': 'Red',
+    'a495bb20c5b14b44b5121370f02d74de': 'Green',
+    'a495bb30c5b14b44b5121370f02d74de': 'Black',
+    'a495bb40c5b14b44b5121370f02d74de': 'Purple',
+    'a495bb50c5b14b44b5121370f02d74de': 'Orange',
+    'a495bb60c5b14b44b5121370f02d74de': 'Blue',
+    'a495bb70c5b14b44b5121370f02d74de': 'Yellow',
+    'a495bb80c5b14b44b5121370f02d74de': 'Pink'
+}
 
-    def handleDiscovery(self, dev, isNewDev, isNewData):
-        if dev.getValueText(btle.ScanEntry.COMPLETE_LOCAL_NAME):
-            if dev.addr in [green]:  # Change this to the colour of your tilt
-                tempf = float(dev.rawData[4:6].hex(), 16)  # Example, might need adjustment
-                tiltSG = float(dev.rawData[6:8].hex(), 16) / 1000
-                tiltTemp = int((tempf - 32) * 5.0 / 9.0)
-                tiltColour = 'GREEN'
-                tiltBeer = 'tdrn3iX9ucmNpbA6n'  # Change to an identifier of a particular brew
+# Ensure unique devices based on UUIDs
+def distinct(objects):
+    seen = set()
+    unique = []
+    for obj in objects:
+        if obj['uuid'] not in seen:
+            unique.append(obj)
+            seen.add(obj['uuid'])
+    return unique
+
+# Convert Fahrenheit to Celsius
+def to_celsius(fahrenheit):
+    return round((fahrenheit - 32.0) / 1.8, 2)
+
+# Monitor and log data from Tilt hydrometers
+def monitor_tilt():
+    while True:
+        beacons = distinct(blescan.parse_events(sock, 10))
+        for beacon in beacons:
+            if beacon['uuid'] in TILTS.keys():
                 data = {
-                    'brewId': tiltBeer,
-                    'temperature': tiltTemp,
-                    'gravity': tiltSG
+                    'color': TILTS[beacon['uuid']],
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'temp': to_celsius(beacon['major']),
+                    'gravity': beacon['minor']
                 }
-                jsonObj = json.dumps(data)
-                client.publish("tilt_data", jsonObj)
+                send_data(data)
 
-def on_connect(client, userdata, flags, rc):
-    print("Connected with result code "+str(rc))
+        time.sleep(10)
 
-def on_publish(client, userdata, mid):
-    print("Message Published: " + str(mid))
 
-def main():
-    global client
+#send data to MQTT broker
+def send_data(data):
     client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_publish = on_publish
-    client.connect("mqtt.example.com", 1883, 60)  # Replace with your MQTT broker address and port
+    client.username_pw_set(username, password)
+    client.connect(broker, port, 60)
     client.loop_start()
-
-    scanner = btle.Scanner().withDelegate(ScanDelegate())
-    scanner.scan(10.0)  # Scans for 10 seconds
-
+    json_data = json.dumps(data)
+    client.publish(topic, json_data)
     client.loop_stop()
     client.disconnect()
+    print json_data
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    dev_id = 0
+    try:
+        sock = bluez.hci_open_dev(dev_id)
+        print 'Starting pytilt logger'
+    except:
+        print 'Error accessing bluetooth device...'
+        sys.exit(1)
+
+    blescan.hci_le_set_scan_parameters(sock)
+    blescan.hci_enable_le_scan(sock)
+    monitor_tilt()

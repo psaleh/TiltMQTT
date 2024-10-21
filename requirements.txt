@@ -1,4 +1,0 @@
-bluepy3
-paho-mqtt
-requests
-
