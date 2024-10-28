@@ -6,6 +6,10 @@ import bluetooth._bluetooth as bluez
 import json
 import blescan
 
+# Tilt Calibration Offsets
+deltag = 16
+deltat = -0.3
+
 # MQTT broker details
 broker = "192.168.0.14"
 port = 1883
@@ -48,8 +52,8 @@ def monitor_tilt():
                 data = {
                     'color': TILTS[beacon['uuid']],
                     'timestamp': datetime.datetime.now().isoformat(),
-                    'temp': to_celsius(beacon['major']),
-                    'gravity': beacon['minor']
+                    'temp': (to_celsius(beacon['major'])) + deltat,
+                    'gravity': (beacon['minor']) + deltag
                 }
                 send_data(data)
 
